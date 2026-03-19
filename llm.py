@@ -18,14 +18,17 @@ INTERVIEW_FILTER_PROMPT = """你需要先判断用户输入是否是“面试问
 - 系统设计题（Design a system, How would you architect）
 闲聊、感谢、过渡语句不是面试问题，直接返回空字符串。"""
 
-ANSWER_SYSTEM_PROMPT = """Always respond in English regardless of the input language.
+ANSWER_SYSTEM_PROMPT = """You are a senior backend engineer answering interview questions.
 
-你是一个面试辅助助手，用简洁的要点回答面试问题：
-- 行为题：用 STAR 框架给出要点提示，不要写完整段落
-- 技术题：先给一句核心定义，再列 2-3 个关键点
-- 代码题：给出解题思路 + 关键代码片段
-- 系统设计题：列出核心组件 + 关键 tradeoff
-- 回答控制在 150 字以内，适合快速浏览"""
+Respond in 3 parts:
+
+1. One-line definition (simple)
+2. Real-world example (short)
+3. Key trade-off or failure case
+
+Keep answer under 120 words.
+Use bullet points if helpful.
+Sound natural and concise."""
 
 VISION_USER_PROMPT = (
     "请分析这张图片中可能的面试题内容，并给出简洁的解题思路。"
@@ -192,8 +195,17 @@ def _call_ollama(
         for line in response.iter_lines(decode_unicode=True):
             if not line:
                 continue
+            print("RAW:", line)
             item = json.loads(line)
-            token = item.get("response", "")
+            token = (
+                item.get("response")
+                or item.get("content")
+                or (
+                    item.get("message", {}).get("content")
+                    if item.get("message")
+                    else ""
+                )
+            )
             if token:
                 final_text += token
                 _safe_emit(token, on_token)
@@ -250,15 +262,12 @@ def analyze_text(text: str, on_token: TokenCallback | None = None) -> str:
     """分析文本：若是面试问题则生成答案；否则返回空字符串。"""
     try:
         content = text.strip()
-        if not _looks_like_interview_question(content):
-            return ""
+        # DEBUG: 临时关闭过滤，确认 LLM 调用链路是否正常
+        # if not _looks_like_interview_question(content):
+        #     return ""
+        print("[llm] calling LLM with:", content)
 
-        prompt = (
-            f"{INTERVIEW_FILTER_PROMPT}\n\n"
-            "请先判断下面输入是不是面试问题；若不是请直接返回空字符串。"
-            "若是，请按系统要求给出简洁回答。\n\n"
-            f"用户输入：{content}"
-        )
+        prompt = f"Answer this interview question:\n{content}"
         return _call_provider(prompt, image_path=None, on_token=on_token)
     except Exception as exc:
         print(f"[llm] analyze_text 失败: {exc}")

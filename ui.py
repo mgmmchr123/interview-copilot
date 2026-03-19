@@ -27,16 +27,21 @@ class CopilotUI:
 
         self._photo_callback: Callable[[], None] | None = None
         self._pause_callback: Callable[[bool], None] | None = None
+        self._mode_toggle_callback: Callable[[bool], None] | None = None
+        self._manual_trigger_callback: Callable[[], None] | None = None
         self._is_listening = True
+        self._auto_mode_enabled = False
 
         self._drag_offset_x = 0
         self._drag_offset_y = 0
+        self._resize_start_y = 0
+        self._resize_start_height = 0
+        self._min_window_height = 250
+        self._max_window_height = 1000
         self._stt_buffer = ""
-        self._show_stt_cursor = True
 
         self._build_layout()
         self._bind_mousewheel()
-        self._start_cursor_blink()
         self.set_status(True)
 
     def _calc_start_geometry(self) -> str:
@@ -88,53 +93,38 @@ class CopilotUI:
         self.status_label.bind("<ButtonPress-1>", self._on_drag_start)
         self.status_label.bind("<B1-Motion>", self._on_drag_move)
 
-        # STT 区域
-        stt_wrap = tk.Frame(self.root, bg=BG_MAIN, height=80)
-        stt_wrap.pack(fill="x")
-        stt_wrap.pack_propagate(False)
-
-        stt_label = tk.Label(
-            stt_wrap, text="STT", bg=BG_MAIN, fg=FG_MUTED, font=("Segoe UI", 10)
+        # 底部自定义 resize handle（overrideredirect 场景）
+        self.resize_bar = tk.Frame(
+            self.root,
+            bg=SEP,
+            height=4,
+            cursor="sb_v_double_arrow",
         )
-        stt_label.pack(anchor="w", padx=10, pady=(4, 2))
+        self.resize_bar.pack(fill="x", side="bottom")
+        self.resize_bar.pack_propagate(False)
+        self.resize_bar.bind("<ButtonPress-1>", self._on_resize_start)
+        self.resize_bar.bind("<B1-Motion>", self._on_resizing)
 
-        stt_text_wrap = tk.Frame(stt_wrap, bg=BG_DARK)
-        stt_text_wrap.pack(fill="both", expand=True, padx=8, pady=(0, 6))
+        # 底部模式+工具栏容器（确保按钮始终可见）
+        mode_bar = tk.Frame(self.root, bg=BG_DARK, height=64)
+        mode_bar.pack(fill="x", side="bottom")
+        mode_bar.pack_propagate(False)
 
-        self.stt_text = tk.Text(
-            stt_text_wrap,
-            bg=BG_DARK,
-            fg=FG_STT,
-            insertbackground="#22c55e",
-            relief="flat",
-            bd=0,
-            font=tkfont.Font(family="Consolas", size=11),
-            wrap="word",
-            padx=8,
-            pady=6,
-            state="disabled",
-        )
-        self.stt_text.pack(fill="both", expand=True)
-
-        # 分隔线
-        divider = tk.Frame(self.root, bg=SEP, height=1)
-        divider.pack(fill="x")
-
-        # AI Answer 区域
-        answer_wrap = tk.Frame(self.root, bg=BG_MAIN)
-        answer_wrap.pack(fill="both", expand=True)
-
-        answer_label = tk.Label(
-            answer_wrap,
-            text="AI Answer",
+        # 中间内容区：上方 AI Answer、下方 STT，可拖拽分隔
+        content_pane = tk.PanedWindow(
+            self.root,
+            orient="vertical",
             bg=BG_MAIN,
-            fg=FG_MUTED,
-            font=("Segoe UI", 10),
+            sashwidth=6,
+            sashrelief="flat",
+            showhandle=False,
         )
-        answer_label.pack(anchor="w", padx=10, pady=(6, 2))
+        content_pane.pack(fill="both", expand=True)
 
+        # AI Answer 区域（顶部）
+        answer_wrap = tk.Frame(content_pane, bg=BG_MAIN)
         answer_text_wrap = tk.Frame(answer_wrap, bg=BG_MAIN)
-        answer_text_wrap.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        answer_text_wrap.pack(fill="both", expand=True, padx=8, pady=6)
 
         self.answer_text = tk.Text(
             answer_text_wrap,
@@ -143,7 +133,7 @@ class CopilotUI:
             insertbackground=FG_MAIN,
             relief="flat",
             bd=0,
-            font=tkfont.Font(family="Consolas", size=12),
+            font=tkfont.Font(family="Consolas", size=10),
             wrap="word",
             spacing1=2,
             spacing2=6,
@@ -163,9 +153,50 @@ class CopilotUI:
             0, 0, 2, 24, fill=SEP, outline=SEP
         )
 
-        # 底部工具栏
-        toolbar = tk.Frame(self.root, bg=BG_DARK, height=36)
-        toolbar.pack(fill="x", side="bottom")
+        # STT 区域（底部，紧凑单行感）
+        stt_wrap = tk.Frame(content_pane, bg=BG_MAIN)
+        stt_text_wrap = tk.Frame(stt_wrap, bg=BG_DARK)
+        stt_text_wrap.pack(fill="both", expand=True, padx=8, pady=4)
+
+        self.stt_text = tk.Text(
+            stt_text_wrap,
+            bg=BG_DARK,
+            fg=FG_STT,
+            insertbackground="#22c55e",
+            relief="flat",
+            bd=0,
+            font=tkfont.Font(family="Consolas", size=10),
+            wrap="word",
+            padx=6,
+            pady=4,
+            state="disabled",
+        )
+        self.stt_text.pack(fill="both", expand=True)
+
+        content_pane.add(answer_wrap, minsize=180)
+        content_pane.add(stt_wrap, minsize=90)
+
+        self.auto_mode_var = tk.BooleanVar(value=False)
+        self.auto_mode_toggle = tk.Checkbutton(
+            mode_bar,
+            text="Auto Mode (Silence Detection)",
+            variable=self.auto_mode_var,
+            bg=BG_DARK,
+            fg=FG_MAIN,
+            activebackground=BG_DARK,
+            activeforeground=FG_MAIN,
+            selectcolor=BG_DARK,
+            font=("Segoe UI", 9),
+            command=self._on_mode_toggle,
+            cursor="hand2",
+            bd=0,
+            highlightthickness=0,
+        )
+        self.auto_mode_toggle.pack(side="top", anchor="w", padx=8, pady=(2, 0))
+
+        # 底部工具栏（嵌套在 mode_bar 内）
+        toolbar = tk.Frame(mode_bar, bg="#222222", height=36)
+        toolbar.pack(fill="x", side="bottom", pady=(0, 2))
         toolbar.pack_propagate(False)
 
         self.photo_btn = tk.Button(
@@ -183,6 +214,20 @@ class CopilotUI:
             command=self._on_photo_click,
         )
         self.photo_btn.pack(side="left", padx=8, pady=6)
+
+        self.manual_trigger_btn = tk.Button(
+            toolbar,
+            text="🧠 Trigger",
+            bg="#1f1f1f",
+            fg=FG_MAIN,
+            activebackground="#2a2a2a",
+            activeforeground="#ffffff",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            command=self._on_manual_trigger_click,
+        )
+        self.manual_trigger_btn.pack(side="left", padx=4, pady=6)
 
         self.pause_btn = tk.Button(
             toolbar,
@@ -237,27 +282,41 @@ class CopilotUI:
         y = self.root.winfo_pointery() - self._drag_offset_y
         self.root.geometry(f"+{x}+{y}")
 
+    def _on_resize_start(self, event: tk.Event) -> None:
+        self._resize_start_y = event.y_root
+        self._resize_start_height = self.root.winfo_height()
+
+    def _on_resizing(self, event: tk.Event) -> None:
+        delta_y = event.y_root - self._resize_start_y
+        new_height = self._resize_start_height + delta_y
+        new_height = max(self._min_window_height, new_height)
+        new_height = min(self._max_window_height, new_height)
+
+        width = self.root.winfo_width()
+        x = self.root.winfo_x()
+        y = self.root.winfo_y()
+        self.root.geometry(f"{width}x{int(new_height)}+{x}+{y}")
+
+    def _is_at_bottom(self, widget: tk.Text) -> bool:
+        first, last = widget.yview()
+        return last >= 0.999
+
     def _set_text_content(self, widget: tk.Text, content: str) -> None:
+        is_at_bottom = self._is_at_bottom(widget)
         widget.config(state="normal")
         widget.delete("1.0", "end")
         widget.insert("end", content)
         widget.config(state="disabled")
-        widget.see("end")
+        if is_at_bottom:
+            widget.see("end")
 
     def _append_text(self, widget: tk.Text, text: str) -> None:
+        is_at_bottom = self._is_at_bottom(widget)
         widget.config(state="normal")
         widget.insert("end", text)
         widget.config(state="disabled")
-        widget.see("end")
-
-    def _render_stt(self) -> None:
-        cursor = "▋" if self._show_stt_cursor else ""
-        self._set_text_content(self.stt_text, f"{self._stt_buffer}{cursor}")
-
-    def _start_cursor_blink(self) -> None:
-        self._show_stt_cursor = not self._show_stt_cursor
-        self._render_stt()
-        self.root.after(500, self._start_cursor_blink)
+        if is_at_bottom:
+            widget.see("end")
 
     def _update_answer_scroll_indicator(self) -> None:
         self.answer_scrollbar.update_idletasks()
@@ -289,12 +348,33 @@ class CopilotUI:
             except Exception as exc:
                 print(f"[ui] pause callback 失败: {exc}")
 
+    def _on_mode_toggle(self) -> None:
+        self._auto_mode_enabled = bool(self.auto_mode_var.get())
+        # 自动模式下禁用手动触发按钮，确保只保留单一触发入口
+        self.manual_trigger_btn.config(
+            state=("disabled" if self._auto_mode_enabled else "normal")
+        )
+        if self._mode_toggle_callback:
+            try:
+                self._mode_toggle_callback(self._auto_mode_enabled)
+            except Exception as exc:
+                print(f"[ui] mode toggle callback 失败: {exc}")
+
+    def _on_manual_trigger_click(self) -> None:
+        if self._auto_mode_enabled:
+            return
+        if self._manual_trigger_callback:
+            try:
+                self._manual_trigger_callback()
+            except Exception as exc:
+                print(f"[ui] manual trigger callback 失败: {exc}")
+
     # ---- 对外公开方法 ----
     def append_transcript(self, text: str) -> None:
         if not text:
             return
         self._stt_buffer += text
-        self._render_stt()
+        self._append_text(self.stt_text, text)
 
     def append_answer(self, text: str) -> None:
         if not text:
@@ -304,9 +384,13 @@ class CopilotUI:
 
     def clear_all(self) -> None:
         self._stt_buffer = ""
-        self._render_stt()
+        self._set_text_content(self.stt_text, "")
         self._set_text_content(self.answer_text, "")
         self._update_answer_scroll_indicator()
+
+    def clear_transcript(self) -> None:
+        self._stt_buffer = ""
+        self._set_text_content(self.stt_text, "")
 
     def set_status(self, listening: bool) -> None:
         self._is_listening = listening
@@ -321,6 +405,12 @@ class CopilotUI:
 
     def set_pause_callback(self, callback: Callable[[bool], None]) -> None:
         self._pause_callback = callback
+
+    def set_mode_toggle_callback(self, callback: Callable[[bool], None]) -> None:
+        self._mode_toggle_callback = callback
+
+    def set_manual_trigger_callback(self, callback: Callable[[], None]) -> None:
+        self._manual_trigger_callback = callback
 
     def run(self) -> None:
         self.root.mainloop()
@@ -346,6 +436,16 @@ def clear_all(ui_state: Any) -> None:
     ui_state.clear_all()
 
 
+def clear_transcript(ui_state: Any) -> None:
+    """仅清空 STT 区域。"""
+    ui_state._stt_buffer = ""
+    widget = ui_state.stt_text
+    widget.config(state="normal")
+    widget.delete("1.0", "end")
+    widget.config(state="disabled")
+    print("[ui] STT cleared")
+
+
 def set_status(ui_state: Any, listening: bool) -> None:
     """切换顶部状态圆点颜色与文字。"""
     ui_state.set_status(listening)
@@ -359,6 +459,16 @@ def set_photo_callback(ui_state: Any, callback: Callable[[], None]) -> None:
 def set_pause_callback(ui_state: Any, callback: Callable[[bool], None]) -> None:
     """设置暂停按钮回调。"""
     ui_state.set_pause_callback(callback)
+
+
+def set_mode_toggle_callback(ui_state: Any, callback: Callable[[bool], None]) -> None:
+    """设置模式切换回调（True=Auto, False=Manual）。"""
+    ui_state.set_mode_toggle_callback(callback)
+
+
+def set_manual_trigger_callback(ui_state: Any, callback: Callable[[], None]) -> None:
+    """设置手动触发按钮回调。"""
+    ui_state.set_manual_trigger_callback(callback)
 
 
 def update_transcript(ui_state: Any, text: str) -> None:

@@ -1,6 +1,6 @@
 import os
 
-
+print("🔥 UI FILE LOADED")
 # 已确认配置
 AUDIO_DEVICE_INDEX = 7
 WHISPER_MODEL = "small"
@@ -63,6 +63,6 @@ CAMERA_INDEX = 1  # 0 = 内建摄像头，1 = 外接 USB 摄像头
 PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "photos")
 # 照片存在项目目录下的 photos 文件夹，完全本地
 
-UI_WIDTH = 320
-UI_HEIGHT = 580
+UI_WIDTH = 360
+UI_HEIGHT = 550
 UI_OPACITY = 0.92

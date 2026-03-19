@@ -1,0 +1,148 @@
+
+---
+[2026-03-18 16:50:56]
+type, private order stack, view to view. So let's give it an answer in one by one. values, lectures also, that mode method overriding or dynamic polymorphism is something. and which is very much as in interviews. So first of all, to the static method. Now the interview will ask you why. So you will ask The private method is something which is very peculiar.
+
+---
+[2026-03-18 16:51:17]
+code, we extended to any of the classes, other classes. So in the sub will not be able to see the private method in the another subclass. and other private method with the same name in the child class will actually create just and it will not actually be overridden from the parent. Hence the concept of
+
+---
+[2026-03-18 16:55:08]
+As for the interview purpose, this is important to know.
+
+---
+[2026-03-18 16:55:25]
+make your class immutable, this is something very important and very, very tricky. six steps to make your particular class immutable.
+
+---
+[2026-03-18 16:55:37]
+you create a particular class, make that class final. Secondly, to So what will you do with the fields? Make the fields practical.
+
+---
+[2026-03-18 16:59:49]
+private, so it will not be available to other classes if you have made it to
+
+---
+[2026-03-18 17:00:04]
+Once it is assigned, it cannot be reassigned or initialized.
+all the fields via constructive while preparing a deep copy.
+and upcoming videos, but remember these steps for the interview purpose.
+
+---
+[2026-03-18 17:00:24]
+last but not the least, always perform cloning of object in the
+copy, rather than returning the actual object reference. So, never return.
+
+---
+[2026-03-18 17:04:14]
+So first of all, you cannot override a...
+
+---
+[2026-03-18 17:04:39]
+Now the interview will ask you why. So you will answer it in two steps.
+something which is very peculiar in a particular class.
+classes, other classes. So in the subclass it will not be accessible.
+
+---
+[2026-03-18 17:05:08]
+method and it will not actually be overridden from the parent. Hence the
+happens in private method as it is not even visible in the child class.
+static methods cannot be overridden in the child classes that if you create a similar
+method with the same written type, same name, same argument, then what will happen?
+will hide the superclass and this is known as method hiding. After all,
+
+---
+[2026-03-18 17:06:01]
+So, this is how method writing is done and hence whenever you do
+overriding or dynamic polymorphism with static method, you will not be able to do it.
+overriding, it will actually be overriding. And one more very important.
+always, you should always call the static method with
+you can create an object and with that object reference you can call.
+you can, you will not get any error. So this is very important thing. Many of the people do.
+
+---
+[2026-03-18 17:09:01]
+You can call this static map.
+always executed Java, so we know that finally method is
+or execute whenever something error happens.
+or not, this finally will always execute. But there are two cases when this.
+method, does not execute. That is, on the first with the system, the takes it and second.
+
+---
+[2026-03-18 17:09:20]
+whenever your system crashes, this particular finally method does not exist.
+
+---
+[2026-03-18 17:14:14]
+and all that you won't execute. So these are the two conditions, only two conditions. First, you...
+with any of the circumstances your system crashes. As soon as your system crashes,
+executer. Next, what method?
+
+---
+[2026-03-18 17:14:34]
+hash half. So this is again a one of the theoretical questions that the ______ .
+
+---
+[2026-03-18 17:14:52]
+first is the clone. So what does this clone method do? It returns the copy of that.
+So if you have an employee object, if you try to clone it, you will get a complete list.
+equals method, it indicates whether the particular object is equal to or not.
+
+---
+[2026-03-18 17:15:09]
+object class, the equals method does nothing but uses the double.
+considers, comparing two particular objects only with the object references.
+whatever methods are present in object class, but you have to give your own employee.
+
+---
+[2026-03-18 17:19:01]
+method is the finalize method, this particular method is called
+when your object is about to be garbage collected and when there is no reference.
+is dead, then garbage collector is called on that particular object. So you have to explicitly
+
+---
+[2026-03-18 17:19:46]
+want to do something before the garbage collector comes and collects.
+
+---
+[2026-03-18 17:29:09]
+project, the third is,
+
+---
+[2026-03-18 17:29:28]
+class method, it returns the runtime class of an object.
+and wait with the three different parameters. These are all the methods which are
+
+---
+[2026-03-18 17:38:23]
+. Next videos.
+lines, but as for the interview purpose this is important to know.
+Then how can you make your class immutable? This is something very important and very...
+so you have to do six steps to make your particular class immutable.
+on the very basic, the class. To make your class
+
+---
+[2026-03-18 19:11:44]
+and other classes. If you have made it to final, that means...
+, initialized, initialize all the fields.
+input, these steps for the interview purpose. Then these are something we will .
+fields, fourth thing, do not provide sectors for various...
+
+---
+[2026-03-18 19:12:22]
+and getter to return a copy rather than returning the actual object reference.
+piece, or the instance variables as private and...
+provide the big copy of the feed.
+
+---
+[2026-03-18 19:16:20]
+is not 100% object oriented. So this is one of the favorite questions of interviews.
+we know that Java is an object oriented language, but why is it not 100%?
+so that you will be answering that in the way that because we have primitive data.
+care, float in double long shot. There's eight types of trim.
+used while we are programming in Java and hence Java is not comp...
+nds, because when you say that it is object oriented, it means that it is object oriented.
+around only and only objects, but these are not objects. So as a round.
+data, they have created some rapid classes. So what are these rapid classes?
+nothing but the way to wrap your primitive data types into something.

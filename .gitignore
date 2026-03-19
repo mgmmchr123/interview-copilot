@@ -16,7 +16,19 @@ env/
 # IDE / OS files
 .DS_Store
 Thumbs.db
+.vscode/
 
 # Runtime/output artifacts
 photos/
 *.log
+
+# Audio / image files (important for your project)
+*.wav
+*.mp3
+*.png
+*.jpg
+
+# Model / large files
+*.bin
+*.pt
+*.onnx
